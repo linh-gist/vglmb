@@ -6,7 +6,7 @@
 %==== M-Best- code base from CPHD_LIN_F3
 
 %==== Run parameters
-function track = VGLMB(observation,input_frames,model,other_param)
+function track = VGLMB(seq,det_dir, input_frames,model,other_param)
 % 
 % marg_flag= 0; %0/1 on/off for MDGLMB approximation
 % elim_threshold= 1e-3; %for pruning of Gaussians inside tracks
@@ -37,25 +37,33 @@ cell_size = 4;
 
 
 % Pre-process detection data
-observation = cutDetections(observation,other_param);
+%observation = cutDetections(observation,other_param);
 
-K = max(observation.fr);
-sc_threshold = quantile(observation.r,0.15);
+%K = max(observation.fr);
+sc_threshold = 0.5;%quantile(observation.r,0.15);
 
+%detection = cell(K,1);
+observation = readtable(strcat(det_dir, seq, '.txt'));
+observation=table2array(observation);
+
+K = max(observation(:, 1)) + 1;
 detection = cell(K,1);
 for t=1:K
     
-    idx = find(observation.fr == t);
-    cur_observation.x = observation.x(idx);
-    cur_observation.y = observation.y(idx);
-    cur_observation.bx = observation.bx(idx);
-    cur_observation.by = observation.by(idx);
-    cur_observation.w = observation.w(idx);
-    cur_observation.h = observation.h(idx);
-    cur_observation.sc = observation.r(idx);
-    cur_observation.fr = observation.fr(idx);
-        
-    detection{t} = [cur_observation.x cur_observation.y cur_observation.w cur_observation.h cur_observation.sc]';
+%     idx = find(observation.fr == t);
+%     cur_observation.x = observation.x(idx);
+%     cur_observation.y = observation.y(idx);
+%     cur_observation.bx = observation.bx(idx);
+%     cur_observation.by = observation.by(idx);
+%     cur_observation.w = observation.w(idx);
+%     cur_observation.h = observation.h(idx);
+%     cur_observation.sc = observation.r(idx);
+%     cur_observation.fr = observation.fr(idx);
+	
+    det_frame = observation(observation(:, 1)==t-1, 2:end);
+    %det_frame = observation(observation(:, 1)==t, 2:end);
+    det_frame(:, 3:4) = det_frame(:, 3:4) - det_frame(:, 1:2); % convert to T, L, W, H
+    detection{t} = [det_frame(:, 1) det_frame(:, 2) det_frame(:, 3) det_frame(:, 4) det_frame(:, 5)]';
     
 end
 
@@ -159,16 +167,13 @@ hyps_update= cell(N_max+1,1);
 
 
 track_count = 0;
-for k=1:50
+line_results = [];
+for k=1:K
     time_start= cputime;
-    
+    sc_threshold = quantile(Z{k}(5, :), 0.05);
     offset = 0;
     try
-        if strcmp(other_param.seq,'PETS2009') || strcmp(other_param.seq,'KITTI_train') || strcmp(other_param.seq,'KITTI_test')
-            img = imread(sprintf(input_frames, k-1+offset)); %% read an image
-        else
-            img = imread(sprintf(input_frames, k+offset)); %% read an image
-        end
+        img = imread(convertStringsToChars(input_frames(k))); %% read an image
     catch
         break
     end
@@ -285,10 +290,11 @@ for k=1:50
         %create predicted surviving tracks
         for tabsidx=1:length(tracks_update)
             offset= length(model.bar_q);
-            [wtemp_predict,mtemp_predict,Ptemp_predict]= kalman_predict_sum_AS(1,model.A,model.Q,tracks_update{tabsidx}.w,tracks_update{tabsidx}.m,tracks_update{tabsidx}.P,tracks_update{tabsidx}.ah);
+            %[wtemp_predict,mtemp_predict,Ptemp_predict]= kalman_predict_sum_AS(1,model.A,model.Q,tracks_update{tabsidx}.w,tracks_update{tabsidx}.m,tracks_update{tabsidx}.P,tracks_update{tabsidx}.ah);
+            [mtemp_predict,Ptemp_predict]=kalman_predict_s(model.A,model.Q,tracks_update{tabsidx}.m,tracks_update{tabsidx}.P);
             tracks_predict{tabsidx+offset}.m = mtemp_predict;
             tracks_predict{tabsidx+offset}.P = Ptemp_predict;
-            tracks_predict{tabsidx+offset}.w = wtemp_predict;
+            tracks_predict{tabsidx+offset}.w = 1;
             tracks_predict{tabsidx+offset}.l = tracks_update{tabsidx}.l;
             tracks_predict{tabsidx+offset}.ah = tracks_update{tabsidx}.ah;
             tracks_predict{tabsidx+offset}.avps = P_S;
@@ -769,10 +775,15 @@ for k=1:50
     track.yhat = [Y'; track.y];
     track.fr = [k'; track.fr];
     track.id = [id'; track.id];
+    %save_format = '{frame},{id},{x1},{y1},{w},{h},1,-1,-1,-1\n'
+    for ii=1:size(W, 2)
+        line = [k,id(ii),X(ii),Y(ii),W(ii),H(ii),1,-1,-1,-1];
+        line_results = [line_results; line];
+    end
     
     
 end
-
+dlmwrite(strcat(seq,'.txt'), line_results, 'delimiter', ',', 'precision', 16);
 if strcmp(model.disp_flag,'vis')
     for k=1:K
         try

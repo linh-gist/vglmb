@@ -44,11 +44,11 @@ function [positions] = kcf_tracker(img, model, pos, target_sz, ...
 
 	%if the target is large, lower the resolution, we don't need that much
 	%detail
-	resize_image = (sqrt(prod(target_sz)) >= 100);  %diagonal size >= threshold
-	if resize_image,
-		pos = floor(pos / 2);
-		target_sz = floor(target_sz / 2);
-	end
+% 	resize_image = (sqrt(prod(target_sz)) >= 100);  %diagonal size >= threshold
+% 	if resize_image,
+% 		pos = floor(pos / 2);
+% 		target_sz = floor(target_sz / 2);
+% 	end
 
 
 	%window size, taking padding into account
@@ -73,9 +73,9 @@ function [positions] = kcf_tracker(img, model, pos, target_sz, ...
     if size(im,3)>1
         im = rgb2gray(im);
     end
-    if resize_image
-        im = imresize(im, 0.5);
-    end
+%     if resize_image
+%         im = imresize(im, 0.5);
+%     end
     
 %     %obtain a subwindow for training at newly estimated target position
 %     patch = get_subwindow(im, init_pos, window_sz);
@@ -127,8 +127,8 @@ function [positions] = kcf_tracker(img, model, pos, target_sz, ...
     positions = pos;
  
 
-	if resize_image,
-		positions = positions * 2;
-	end
+% 	if resize_image,
+% 		positions = positions * 2;
+% 	end
 end
 

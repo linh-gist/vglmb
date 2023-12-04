@@ -7,4 +7,6 @@ function [m_predict,P_predict] = kalman_predict(F,Q,m,P)
 %output: m_predict, P_predict
 
 m_predict = F*m;
+m_predict(3) = max(eps, m_predict(3));
+m_predict(4) = max(eps, m_predict(4));
 P_predict = Q + F*P*F';

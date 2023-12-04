@@ -20,7 +20,7 @@ model.Q_S_tempd = 1-model.P_S_tempd;
 model.Q_D_tempd = 1-model.P_D_tempd;
 
 
-model.N_max = 50; %max number of terms to calculate the cardinality distribution
+model.N_max = 100; %max number of terms to calculate the cardinality distribution
 %WARNING: DO NOT set N_max  <= max |Z_k| (out of bounds error will occur)
 %NOTE:    Advisable to set N_max >> max |Z_k| 
 %         and              N_max >> max |X_k| 
